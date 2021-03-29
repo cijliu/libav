@@ -21,7 +21,7 @@ OBJS-$(CONFIG_SNDIO_INDEV)               += sndio.o
 OBJS-$(CONFIG_V4L2_INDEV)                += v4l2.o
 OBJS-$(CONFIG_VFWCAP_INDEV)              += vfwcap.o
 OBJS-$(CONFIG_XCBGRAB_INDEV)             += xcbgrab.o
-
+OBJS-$(CONFIG_HI3516EV200_INDEV)         += hi3516ev200.o 
 # external libraries
 OBJS-$(CONFIG_LIBCDIO_INDEV)             += libcdio.o
 OBJS-$(CONFIG_LIBDC1394_INDEV)           += libdc1394.o

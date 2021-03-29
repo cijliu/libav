@@ -49,7 +49,7 @@ void avdevice_register_all(void)
     REGISTER_INDEV(V4L2,             v4l2);
     REGISTER_INDEV(VFWCAP,           vfwcap);
     REGISTER_INDEV(XCBGRAB,          xcbgrab);
-
+    REGISTER_INDEV(HI3516EV200,      hi3516ev200);
     /* external libraries */
     REGISTER_INDEV(LIBCDIO,          libcdio);
     REGISTER_INDEV(LIBDC1394,        libdc1394);

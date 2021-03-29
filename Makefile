@@ -33,7 +33,10 @@ ASFLAGS    := $(CPPFLAGS) $(ASFLAGS)
 X86ASMFLAGS += $(IFLAGS:%=%/) -I$(<D)/ -Pconfig.asm
 HOSTCCFLAGS = $(IFLAGS) $(HOSTCPPFLAGS) $(HOSTCFLAGS)
 LDFLAGS    := $(ALLFFLIBS:%=$(LD_PATH)lib%) $(LDFLAGS)
-
+CFLAGS += -I./libavdevice/platform/hisilicon/hi3516ev200/mpp/include \
+          -I./libavdevice/platform/hisilicon/hi3516ev200/mpp/sample/common \
+          -I./libavdevice/platform/hisilicon/hi3516ev200/mpp/sample/audio/adp 
+LDFLAGS += -L./libavdevice/platform/hisilicon/hi3516ev200 -lmpp
 define COMPILE
 	$(call $(1)DEP,$(1))
 	$($(1)) $($(1)FLAGS) $($(1)_DEPFLAGS) $($(1)_C) $($(1)_O) $<
