@@ -369,24 +369,64 @@ void HISILICON_VIO_Stop(void)
 #include "libavutil/pixdesc.h"
 #include "libavutil/avstring.h"
 #include "libavutil/mathematics.h"
+struct video_data {
+    AVClass *class;
+    int fd;
+    int frame_format; /* V4L2_PIX_FMT_* */
+    int width, height;
+    int frame_size;
+    int timeout;
+    int interlaced;
+    int top_field_first;
+
+    int buffers;
+    atomic_int buffers_queued;
+    void **buf_start;
+    unsigned int *buf_len;
+    char *standard;
+    int channel;
+    char *video_size;   /**< String describing video size,
+                             set by a private option. */
+    char *pixel_format; /**< Set by a private option. */
+    int list_format;    /**< Set by a private option. */
+    char *framerate;    /**< Set by a private option. */
+};
+static void video_format(struct video_data *s)
+{
+    if(strcmp(s->video_size, "h720") == 0){
+        s->width = 1280;
+        s->height = 720;
+    }
+    else if(strcmp(s->video_size, "vga") == 0){
+        s->width = 640;
+        s->height = 480;
+    }
+    else {
+        s->width = 320;
+        s->height = 240;
+    }
+}
 static int hi3516ev200_read_header(AVFormatContext *s1)
 {
     AVStream *st;
-    printf("%s %d %s\n",__func__, __LINE__,s1->filename);
+    struct video_data *s = s1->priv_data;
+    video_format(s);
+    printf("%s %d %s (%d,%d)\n",__func__, __LINE__,s1->filename,s->width, s->height);
     st = avformat_new_stream(s1, NULL);
     if (!st)
         return AVERROR(ENOMEM);
-    
+
     HISILICON_VIO_Sensor(0);
-    HISILICON_VIO_Start(320, 240);
+    HISILICON_VIO_Start(s->width, s->height);
     return 0;
 }
 static int hi3516ev200_read_packet(AVFormatContext *s1, AVPacket *pkt)
 {
     int ret;
+    struct video_data *s = s1->priv_data;
     printf("%s %d\n",__func__, __LINE__);
     
-    if ((ret = av_new_packet(pkt, 320*240*3/2)) < 0){
+    if ((ret = av_new_packet(pkt, s->width*s->height*3/2)) < 0){
         printf("%s %d\n",__func__, __LINE__);
         return ret;
     }
@@ -401,7 +441,10 @@ static int hi3516ev200_read_close(AVFormatContext *s1)
     HISILICON_VIO_Stop();
     return 0;
 }
+#define OFFSET(x) offsetof(struct video_data, x)
+#define DEC AV_OPT_FLAG_DECODING_PARAM
 static const AVOption options[] = {
+    { "video_size",   "A string describing frame size, such as 640x480 or hd720.", OFFSET(video_size),   AV_OPT_TYPE_STRING, {.str = "NULL"},  0, 0,       DEC },
     { NULL },
 };
 static const AVClass hi3516ev200_class = {
@@ -413,7 +456,7 @@ static const AVClass hi3516ev200_class = {
 AVInputFormat ff_hi3516ev200_demuxer = {
     .name           = "hi3516ev200",
     .long_name      = NULL_IF_CONFIG_SMALL("hi3516ev200 device"),
-    .priv_data_size = sizeof(int),
+    .priv_data_size = sizeof(struct video_data),
     .read_header    = hi3516ev200_read_header,
     .read_packet    = hi3516ev200_read_packet,
     .read_close     = hi3516ev200_read_close,

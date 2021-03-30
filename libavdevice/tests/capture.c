@@ -5,6 +5,8 @@
 #include "avformat.h"
 #include "avcodec.h"
 #include "avdevice.h"
+#include "opt.h"
+#include "dict.h"
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -18,28 +20,33 @@ void captureOneFrame(void){
     AVInputFormat *inputFmt;
     FILE *fp;
     int ret;
- 
- 
+    AVDictionary *av_attr = NULL;
+
+    av_dict_set(&av_attr,"video_size","h720",0);
     inputFmt = av_find_input_format(input_name);    
    
     if (inputFmt == NULL)    {        
         printf("can not find_input_format\n");        
         return;    
     }    
- 
-    if (avformat_open_input ( &fmtCtx, file_name, inputFmt, NULL) < 0){
+   
+    if (avformat_open_input ( &fmtCtx, file_name, inputFmt, &av_attr) < 0){
         printf("can not open_input_file\n");         return;    
     }
     /* print device information*/
     av_dump_format(fmtCtx, 0, file_name, 0);
- 
+    char *str = av_malloc(128);
+    //av_opt_set(fmtCtx->priv_data, "video_size","h720", 0);
+    av_opt_get(fmtCtx->priv_data, "video_size",0, (uint8_t **)&str);
+    printf("str:%s\n",str);
+    av_free(str);
     
     
     sprintf(out_file, "test.yuv");
     fp = fopen(out_file, "wb");  
     printf("enter any key to snap, but 'q' is exit\n");
     int id=0;
-
+    
     if((id=fork()) > 0){
         printf("id %d\n",id);
         packet = (AVPacket *)av_malloc(sizeof(AVPacket)); 
@@ -80,13 +87,14 @@ void captureOneFrame(void){
         printf("exit\n"); 
     }
     else if(id == 0){
-        printf("id %d\n",id);
-        while(getchar()!='q'){
-           usleep(10000);
-        }
-        printf("exit child\n");    
-        sleep(1);
-        exit(0);
+        // printf("id %d\n",id);
+        // while(getchar()!='q'){
+        //    usleep(10000);
+        //    break;
+        // }
+        // printf("exit child\n");    
+        // sleep(1);
+        // exit(0);
         
     }
       
