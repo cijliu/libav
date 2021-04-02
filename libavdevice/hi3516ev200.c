@@ -369,6 +369,20 @@ void HISILICON_VIO_Stop(void)
 #include "libavutil/pixdesc.h"
 #include "libavutil/avstring.h"
 #include "libavutil/mathematics.h"
+#define _HI3516EV200_DEBUG_  0
+
+#if _HI3516EV200_DEBUG_
+#include "stdio.h"
+#define _debug(format,...) printf("[\033[1m\033[40;33m"__FILE__": %05d\033[0m]: "format, __LINE__, ##__VA_ARGS__)  
+#else
+#define _debug(format,...)
+#endif
+enum pixel_enum {
+    HI3516EV200_YUV420,
+    HI3516EV200_H264,
+    HI3516EV200_H265,
+    HI3516EV200_JPEG,
+};
 struct video_data {
     AVClass *class;
     int fd;
@@ -393,7 +407,11 @@ struct video_data {
 };
 static void video_format(struct video_data *s)
 {
-    if(strcmp(s->video_size, "h720") == 0){
+    if(strcmp(s->video_size, "1080p") == 0){
+        s->width = 1920;
+        s->height = 1080;
+    }
+    else if(strcmp(s->video_size, "720p") == 0){
         s->width = 1280;
         s->height = 720;
     }
@@ -406,45 +424,74 @@ static void video_format(struct video_data *s)
         s->height = 240;
     }
 }
+static int pixel_format(struct video_data *s)
+{
+    enum pixel_enum en = HI3516EV200_YUV420;
+    if(strcmp(s->pixel_format, "h264") == 0){
+        en = HI3516EV200_H264;
+    }
+    else if(strcmp(s->pixel_format, "h265") == 0){
+        en = HI3516EV200_H264;
+    }
+    else if(strcmp(s->pixel_format, "jpeg") == 0){
+        en = HI3516EV200_JPEG;
+    }
+    return (int)en;
+}
+static int sensor_type(char *s)
+{
+    int type = 0;
+    if(strcmp(s, "gc2053") == 0){
+        type = 1; 
+    }
+    return type;
+}
 static int hi3516ev200_read_header(AVFormatContext *s1)
 {
     AVStream *st;
     struct video_data *s = s1->priv_data;
     video_format(s);
-    printf("%s %d %s (%d,%d)\n",__func__, __LINE__,s1->filename,s->width, s->height);
+    _debug("%s %d %s (%d,%d)\n",__func__, __LINE__,s1->filename,s->width, s->height);
     st = avformat_new_stream(s1, NULL);
     if (!st)
         return AVERROR(ENOMEM);
 
-    HISILICON_VIO_Sensor(0);
+    HISILICON_VIO_Sensor(sensor_type(s1->filename));
     HISILICON_VIO_Start(s->width, s->height);
     return 0;
 }
 static int hi3516ev200_read_packet(AVFormatContext *s1, AVPacket *pkt)
 {
-    int ret;
+    int ret,en;
     struct video_data *s = s1->priv_data;
-    printf("%s %d\n",__func__, __LINE__);
+    _debug("%s %d\n",__func__, __LINE__);
     
     if ((ret = av_new_packet(pkt, s->width*s->height*3/2)) < 0){
-        printf("%s %d\n",__func__, __LINE__);
+        _debug("%s %d\n",__func__, __LINE__);
         return ret;
     }
-        
-    HISILICON_VIO_GetFrame(pkt->data, &pkt->size);
-    printf("%s %d %d\n",__func__, __LINE__,pkt->size);
+    ret = HISILICON_VIO_GetFrame(pkt->data, &pkt->size);    
+    if(ret){
+        return AVERROR(ret);
+    }
+    en = pixel_format(s);
+    if(en == HI3516EV200_H264){
+        _debug("encoder:H264\n");
+    }
+    _debug("%s %d %d\n",__func__, __LINE__,pkt->size);
     return pkt->size;
 }
 static int hi3516ev200_read_close(AVFormatContext *s1)
 {
-    printf("%s %d\n",__func__, __LINE__);
+    _debug("%s %d\n",__func__, __LINE__);
     HISILICON_VIO_Stop();
     return 0;
 }
 #define OFFSET(x) offsetof(struct video_data, x)
 #define DEC AV_OPT_FLAG_DECODING_PARAM
 static const AVOption options[] = {
-    { "video_size",   "A string describing frame size, such as 640x480 or hd720.", OFFSET(video_size),   AV_OPT_TYPE_STRING, {.str = "NULL"},  0, 0,       DEC },
+    { "pixel_format",   "A string describing frame format, such as h264 or yuv420.", OFFSET(pixel_format),   AV_OPT_TYPE_STRING, {.str = "yuv420"},  0, 0,       DEC },
+    { "video_size",   "A string describing frame size, such as vga or h720.", OFFSET(video_size),   AV_OPT_TYPE_STRING, {.str = "vga"},  0, 0,       DEC },
     { NULL },
 };
 static const AVClass hi3516ev200_class = {

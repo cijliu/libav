@@ -10,10 +10,12 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-char* input_name= "hi3516ev200";
+
+char* input_name= "hi3516ev200";//"video4linux2";
 char* file_name = "imx307";//"/dev/video0";
 char out_file[128];
 int flag=1;
+
 void captureOneFrame(void){
     AVFormatContext *fmtCtx = NULL;    
     AVPacket *packet;
@@ -21,10 +23,13 @@ void captureOneFrame(void){
     FILE *fp;
     int ret;
     AVDictionary *av_attr = NULL;
+#if 1
+    av_dict_set(&av_attr,"video_size","1080p",0);
+    av_dict_set(&av_attr,"pixel_format","h264",0);
+#endif
 
-    av_dict_set(&av_attr,"video_size","h720",0);
+
     inputFmt = av_find_input_format(input_name);    
-   
     if (inputFmt == NULL)    {        
         printf("can not find_input_format\n");        
         return;    
@@ -36,7 +41,6 @@ void captureOneFrame(void){
     /* print device information*/
     av_dump_format(fmtCtx, 0, file_name, 0);
     char *str = av_malloc(128);
-    //av_opt_set(fmtCtx->priv_data, "video_size","h720", 0);
     av_opt_get(fmtCtx->priv_data, "video_size",0, (uint8_t **)&str);
     printf("str:%s\n",str);
     av_free(str);
@@ -46,7 +50,7 @@ void captureOneFrame(void){
     fp = fopen(out_file, "wb");  
     printf("enter any key to snap, but 'q' is exit\n");
     int id=0;
-    
+    #if 1
     if((id=fork()) > 0){
         printf("id %d\n",id);
         packet = (AVPacket *)av_malloc(sizeof(AVPacket)); 
@@ -97,6 +101,9 @@ void captureOneFrame(void){
         // exit(0);
         
     }
+    #else
+    
+    #endif
       
     
  }

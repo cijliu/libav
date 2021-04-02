@@ -13,6 +13,7 @@ struct hisilicon_vi {
 	VPSS_CHN           VpssChn; 
 	VIDEO_FRAME_INFO_S stFrame;
 };
+
 void HISILICON_VIO_Sensor(int type);
 int HISILICON_VIO_Start(int width, int height);
 int HISILICON_VIO_GetFrame(unsigned char *buf, int *len);
