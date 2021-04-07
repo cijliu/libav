@@ -25,7 +25,7 @@ void captureOneFrame(void){
     AVDictionary *av_attr = NULL;
 #if 1
     av_dict_set(&av_attr,"video_size","1080p",0);
-    av_dict_set(&av_attr,"pixel_format","h264",0);
+    av_dict_set(&av_attr,"pixel_format","jpeg",0);
 #endif
 
 

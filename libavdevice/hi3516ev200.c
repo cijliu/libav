@@ -36,7 +36,7 @@ enum pixel_enum {
     HI3516EV200_YUV420,
     HI3516EV200_H264,
     HI3516EV200_H265,
-    HI3516EV200_JPEG,
+    HI3516EV200_MJPEG,
 };
 struct video_data {
     AVClass *class;
@@ -94,7 +94,7 @@ static int pixel_format(struct video_data *s)
         
     }
     else if(strcmp(s->pixel_format, "jpeg") == 0){
-        en = HI3516EV200_JPEG;
+        en = HI3516EV200_MJPEG;
     }
     return (int)en;
 }
@@ -106,10 +106,42 @@ static int sensor_type(char *s)
     }
     return type;
 }
+static int hi3516ev200_venc_init(struct video_data *s)
+{
+    int ret = 0;
+    int en = pixel_format(s);
+    switch(en){
+    case HI3516EV200_H264:
+        ret = HISILICON_Coder_Init(HISILICON_CODER_H264, s->frame_format, SAMPLE_RC_CBR, VENC_GOPMODE_NORMALP);
+        break;
+    case HI3516EV200_H265:
+        ret = HISILICON_Coder_Init(HISILICON_CODER_H265, s->frame_format, SAMPLE_RC_CBR, VENC_GOPMODE_NORMALP);
+        break;
+    case HI3516EV200_MJPEG:
+        ret = HISILICON_Coder_Init(HISILICON_CODER_MJPEG, s->frame_format, SAMPLE_RC_CBR, VENC_GOPMODE_NORMALP);
+        break;
+    }
+    return ret;
+}
+static int hi3516ev200_venc(struct video_data *s,AVPacket *pkt)
+{
+    pack_t hisi_pack;
+    if(HISILICON_Coder_SendYUV420Frame(pkt->data, s->frame_format)){
+        _debug("encoder:H264 err\n");
+        return -1;
+    }
+    hisi_pack.data = pkt->data;
+    if(HISILICON_Coder_Run(&hisi_pack)){
+        _debug("HISILICON_H264_Coder_Run break\n");
+        return -1;
+    }
+    pkt->size = hisi_pack.len;
+    return 0;
+    
+}
 static int hi3516ev200_read_header(AVFormatContext *s1)
 {
     AVStream *st;
-    int ret;
     struct video_data *s = s1->priv_data;
     video_format(s);
     _debug("%s %d %s (%d,%d)\n",__func__, __LINE__,s1->filename,s->width, s->height);
@@ -119,15 +151,13 @@ static int hi3516ev200_read_header(AVFormatContext *s1)
 
     HISILICON_VIO_Sensor(sensor_type(s1->filename));
     HISILICON_VIO_Start(s->width, s->height);
-    ret = HISILICON_Coder_Init(HISILICON_CODER_H264, s->frame_format, SAMPLE_RC_CBR, VENC_GOPMODE_NORMALP);
-    if(ret){
-        return ret;
-    }
+    hi3516ev200_venc_init(s);
     return 0;
 }
+
 static int hi3516ev200_read_packet(AVFormatContext *s1, AVPacket *pkt)
 {
-    int ret,en;
+    int ret;
     struct video_data *s = s1->priv_data;
     _debug("%s %d\n",__func__, __LINE__);
     
@@ -139,19 +169,9 @@ static int hi3516ev200_read_packet(AVFormatContext *s1, AVPacket *pkt)
     if(ret){
         return AVERROR(ret);
     }
-    en = pixel_format(s);
-    if(en == HI3516EV200_H264){
-        pack_t hisi_pack;
-        _debug("encoder:H264\n");
-        if(HISILICON_Coder_SendYUV420Frame(pkt->data, s->frame_format)){
-            _debug("encoder:H264 err\n");
-        }
-        hisi_pack.data = pkt->data;
-        if(HISILICON_Coder_Run(&hisi_pack)){
-            _debug("HISILICON_H264_Coder_Run break\n");
-        }
-        pkt->size = hisi_pack.len;
-        //av_free_packet(pkt);
+    if(hi3516ev200_venc(s,pkt)){
+        _debug("HISILICON_H264_Coder_Run break\n");
+        return -1;
     }
     _debug("%s %d %d\n",__func__, __LINE__,pkt->size);
     return pkt->size;
