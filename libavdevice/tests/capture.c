@@ -43,10 +43,12 @@ void captureOneFrame(void){
     char *str = av_malloc(128);
     av_opt_get(fmtCtx->priv_data, "video_size",0, (uint8_t **)&str);
     printf("str:%s\n",str);
+    av_opt_get(fmtCtx->priv_data, "pixel_format",0, (uint8_t **)&str);
+    sprintf(out_file, "test.%s",str);
     av_free(str);
     
     
-    sprintf(out_file, "test.yuv");
+    
     fp = fopen(out_file, "wb");  
     printf("enter any key to snap, but 'q' is exit\n");
     int id=0;
